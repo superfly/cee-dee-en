@@ -8,24 +8,47 @@ fly.http.respondWith(async function(req){
   const headers = normalizeHeaders(req.headers)
   const key = generateCacheKey(req.method, url, headers)
 
-  return new Response("Cache key: " + key)
+  return new Response("Cache key: " + url.toString())
 })
 
 /*
-* URLs can have all kinds of funny inconsistencies. This cleans them 
-* up in a reasonably safe way by:
+* URLs can have all kinds of funny inconsistencies. This function cleans them 
+* up:
 *
-* * Sorting query parameters
 * * Removing tracking params that are only used by client side JS
+* * Sorting query parameters
 */
+const ignoredParams = "utm_source|utm_medium|utm_campaign|utm_content|gclid|cx|ie|cof|siteurl".split("|")
 function normalizeUrl(url){
-  return url
+  const u = new URL(url)
+  const sp = u.searchParams
+  for(const p of ignoredParams){
+    sp.delete(p)
+  }
+  sp.sort()
+  u.search = sp.toString()
+  return u
 }
 
+/*
+* Only some headeres matter for caching purposes. For
+* everything except the cookie header, grab the useful ones, 
+* and sort their values. Cookie headers get special treament.
+*/
 function normalizeHeaders(headers){
   return headers
 }
 
+const staticFilePattern = /^[^?]*\.(7z|avi|bz2|flac|flv|gz|mka|mkv|mov|mp3|mp4|mpeg|mpg|ogg|ogm|opus|rar|tar|tgz|tbz|txz|wav|webm|xz|zip)(\?.*)?$/
+function normalizeCookies(url, headers){
+  return headers
+}
+
+/*
+* Cache keys work best as a hash of normalized request data.
+* Since this is optimized for speed, MD5 is a reasonable way of hashing
+* data to generate a key.
+*/
 function generateCacheKey(method, url, headers){
   return [method, url.toString()].join(":")
 }
