@@ -8,7 +8,15 @@ fly.http.respondWith(async function(req){
   const headers = normalizeHeaders(req.headers)
   const key = generateCacheKey(req.method, url, headers)
 
-  return new Response("Cache key: " + url.toString())
+  let body = await fly.cache.getString(key)
+  let status = "HIT"
+
+  if(!body){
+    body = [url.toString(), new Date()].join(" - ")
+    fly.cache.set(key, body, 10)
+    status = "MISS"
+  }
+  return new Response("Cache " + status + ": " + body + "\r\n" + new Date())
 })
 
 /*
